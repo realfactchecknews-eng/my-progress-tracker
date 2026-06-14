@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой прогресс</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            border-radius: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .form-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .form-section h2 {
+            color: #a855f7;
+            margin-bottom: 16px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 1em;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #818cf8;
+        }
+        .entry {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid #6366f1;
+        }
+        .entry h3 {
+            color: #818cf8;
+            margin-bottom: 8px;
+        }
+        .entry .date {
+            color: #64748b;
+            font-size: 0.85em;
+            margin-bottom: 12px;
+        }
+        .entry .actions {
+            margin-top: 12px;
+        }
+        .entry .actions button {
+            padding: 6px 12px;
+            margin-right: 8px;
+            font-size: 0.85em;
+        }
+        .delete-btn {
+            background: #ef4444;
+        }
+        .delete-btn:hover {
+            background: #f87171;
+        }
+        .edit-btn {
+            background: #f59e0b;
+        }
+        .edit-btn:hover {
+            background: #fbbf24;
+        }
+        .empty {
+            text-align: center;
+            color: #64748b;
+            padding: 40px;
+        }
+        .stats {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        .stats div {
+            flex: 1;
+        }
+        .stats .number {
+            font-size: 2em;
+            color: #a855f7;
+            font-weight: bold;
+        }
+        .stats .label {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Мой прогресс</h1>
+            <p>Трекер того, что я сделал и чему научился</p>
+        </header>
+
+        <div class="stats">
+            <div>
+                <div class="number" id="totalCount">0</div>
+                <div class="label">записей</div>
+            </div>
+            <div>
+                <div class="number" id="todayCount">0</div>
+                <div class="label">сегодня</div>
+            </div>
+            <div>
+                <div class="number" id="streakCount">0</div>
+                <div class="label">дней подряд</div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h2 id="formTitle">Добавить запись</h2>
+            <input type="date" id="entryDate">
+            <input type="text" id="entryTitle" placeholder="Заголовок (например: Сделал Telegram бота)">
+            <textarea id="entryText" placeholder="Опиши, что сделал, что узнал, какие проблемы решил..."></textarea>
+            <button onclick="saveEntry()" id="saveBtn">Сохранить</button>
+            <button onclick="cancelEdit()" id="cancelBtn" style="display:none; background:#64748b;">Отмена</button>
+        </div>
+
+        <div id="entriesList"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'my-progress-entries';
+        let editingId = null;
+
+        const SAMPLE_ENTRIES = [
+            {
+                id: 'sample-1',
+                date: '2026-06-15',
+                title: 'Создал Telegram-бота с ИИ',
+                text: 'Сделал бота на Python + aiogram. Подключил несколько API: Groq, OpenRouter, Together, HuggingFace, Cerebras. Сделал fallback в тестовый режим. Запушил на GitHub и задеплоил на bothost.ru.'
+            },
+            {
+                id: 'sample-2',
+                date: '2026-06-15',
+                title: 'Настроил стиль бота под Мелстроя',
+                text: 'Добавил системный промпт, few-shot примеры с мемными фразами, случайные вставки в начале ответа. Бот теперь использует слова: беды, друн, баба, нормалды, масса, щавель, хаммам.'
+            },
+            {
+                id: 'sample-3',
+                date: '2026-06-15',
+                title: 'Сделал сайт с планом обучения',
+                text: 'Создал HTML-сайт с 2-недельным планом по изучению AI-ботов, полезными ссылками и инструкциями.'
+            }
+        ];
+
+        function getEntries() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) return JSON.parse(data);
+            // При первом открытии показываем примеры
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_ENTRIES));
+            return SAMPLE_ENTRIES;
+        }
+
+        function saveEntries(entries) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('ru-RU', options);
+        }
+
+        function saveEntry() {
+            const date = document.getElementById('entryDate').value;
+            const title = document.getElementById('entryTitle').value.trim();
+            const text = document.getElementById('entryText').value.trim();
+
+            if (!date || !title || !text) {
+                alert('Заполни все поля');
+                return;
+            }
+
+            let entries = getEntries();
+
+            if (editingId) {
+                const index = entries.findIndex(e => e.id === editingId);
+                if (index !== -1) {
+                    entries[index] = { id: editingId, date, title, text };
+                }
+                editingId = null;
+            } else {
+                entries.push({ id: generateId(), date, title, text });
+            }
+
+            saveEntries(entries);
+            clearForm();
+            renderEntries();
+        }
+
+        function deleteEntry(id) {
+            if (!confirm('Удалить запись?')) return;
+            let entries = getEntries().filter(e => e.id !== id);
+            saveEntries(entries);
+            renderEntries();
+        }
+
+        function editEntry(id) {
+            const entry = getEntries().find(e => e.id === id);
+            if (!entry) return;
+
+            document.getElementById('entryDate').value = entry.date;
+            document.getElementById('entryTitle').value = entry.title;
+            document.getElementById('entryText').value = entry.text;
+            document.getElementById('formTitle').textContent = 'Редактировать запись';
+            document.getElementById('saveBtn').textContent = 'Обновить';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            editingId = id;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            clearForm();
+        }
+
+        function clearForm() {
+            document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('entryTitle').value = '';
+            document.getElementById('entryText').value = '';
+            document.getElementById('formTitle').textContent = 'Добавить запись';
+            document.getElementById('saveBtn').textContent = 'Сохранить';
+            document.getElementById('cancelBtn').style.display = 'none';
+            editingId = null;
+        }
+
+        function renderEntries() {
+            const entries = getEntries().sort((a, b) => new Date(b.date) - new Date(a.date));
+            const container = document.getElementById('entriesList');
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="empty">Пока нет записей. Добавь первую!</div>';
+            } else {
+                container.innerHTML = entries.map(entry => `
+                    <div class="entry">
+                        <h3>${escapeHtml(entry.title)}</h3>
+                        <div class="date">${formatDate(entry.date)}</div>
+                        <div>${escapeHtml(entry.text).replace(/\n/g, '<br>')}</div>
+                        <div class="actions">
+                            <button class="edit-btn" onclick="editEntry('${entry.id}')">Редактировать</button>
+                            <button class="delete-btn" onclick="deleteEntry('${entry.id}')">Удалить</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateStats();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateStats() {
+            const entries = getEntries();
+            const today = new Date().toISOString().split('T')[0];
+            const todayCount = entries.filter(e => e.date === today).length;
+
+            const dates = [...new Set(entries.map(e => e.date))].sort();
+            let streak = 0;
+            if (dates.length > 0) {
+                const checkDate = new Date();
+                if (dates.includes(checkDate.toISOString().split('T')[0])) {
+                    streak = 1;
+                    while (true) {
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        const dateStr = checkDate.toISOString().split('T')[0];
+                        if (dates.includes(dateStr)) {
+                            streak++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('totalCount').textContent = entries.length;
+            document.getElementById('todayCount').textContent = todayCount;
+            document.getElementById('streakCount').textContent = streak;
+        }
+
+        // Set default date to today
+        document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+
+        renderEntries();
+    </script>
+</body>
+</html>
