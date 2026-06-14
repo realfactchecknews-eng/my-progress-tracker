@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Мои заметки</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{--g:#C9A84C;--gl:#E2C47A;--gd:rgba(201,168,76,.12);--gb:rgba(201,168,76,.26);--bg:#070707;--s1:#0e0e0e;--s2:#161616;--tx:#F0EDE8;--mu:#505050;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -635,6 +635,9 @@ function gPhysics(){
   });
 }
 
+const NOTE_COLORS=['#C9A84C','#5B9BD5','#70C48C','#B87AE8','#E07878','#50C8C8','#E8A060','#80C840','#E878B8','#78A8E8'];
+function noteColor(id){let h=0;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))&0xffff;return NOTE_COLORS[h%NOTE_COLORS.length];}
+
 function gRender(gc){
   const ctx=gc.getContext('2d');
   ctx.clearRect(0,0,gW,gH);
@@ -658,30 +661,34 @@ function gRender(gc){
     const s=GN.find(n=>n.id===e.s),t=GN.find(n=>n.id===e.t);
     if(!s||!t)return;
     const hi=gSel&&(gSel.id===s.id||gSel.id===t.id);
+    const sc=noteColor(s.id),tc=noteColor(t.id);
+    const grad=ctx.createLinearGradient(s.x,s.y,t.x,t.y);
+    grad.addColorStop(0,sc+(hi?'99':'33'));
+    grad.addColorStop(1,tc+(hi?'99':'33'));
     ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(t.x,t.y);
-    ctx.strokeStyle=hi?'rgba(201,168,76,.65)':'rgba(201,168,76,.22)';
-    ctx.lineWidth=hi?1.8:1;ctx.stroke();
+    ctx.strokeStyle=grad;ctx.lineWidth=hi?1.8:1;ctx.stroke();
   });
 
   // nodes
   GN.forEach(n=>{
     const isSel=gSel&&gSel.id===n.id;
     const isHov=gHov&&gHov.id===n.id;
-    ctx.shadowColor='#C9A84C';ctx.shadowBlur=isSel?22:isHov?12:0;
+    const clr=noteColor(n.id);
+    ctx.shadowColor=clr;ctx.shadowBlur=isSel?24:isHov?14:0;
     ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,2*Math.PI);
-    ctx.fillStyle=isSel?'rgba(201,168,76,.2)':'rgba(20,20,20,.9)';ctx.fill();
-    ctx.strokeStyle=(isSel||isHov)?'#C9A84C':'rgba(201,168,76,.45)';
-    ctx.lineWidth=isSel?2:1.5;ctx.stroke();
+    ctx.fillStyle=isSel?clr+'33':'rgba(14,14,14,.95)';ctx.fill();
+    ctx.strokeStyle=(isSel||isHov)?clr:clr+'70';
+    ctx.lineWidth=isSel?2.2:1.5;ctx.stroke();
     ctx.shadowBlur=0;
     // center dot
-    ctx.beginPath();ctx.arc(n.x,n.y,2.5,0,2*Math.PI);
-    ctx.fillStyle=(isSel||isHov)?'#C9A84C':'rgba(201,168,76,.55)';ctx.fill();
+    ctx.beginPath();ctx.arc(n.x,n.y,2.8,0,2*Math.PI);
+    ctx.fillStyle=(isSel||isHov)?clr:clr+'88';ctx.fill();
     // label
     if(isSel||isHov){
       const lbl=n.label.length>22?n.label.slice(0,22)+'…':n.label;
       ctx.font='10px Inter';ctx.textAlign='center';
-      ctx.fillStyle='#F0EDE8';
-      ctx.shadowColor='#000';ctx.shadowBlur=6;
+      ctx.fillStyle=clr;
+      ctx.shadowColor='#000';ctx.shadowBlur=8;
       ctx.fillText(lbl,n.x,n.y+n.r+14);
       ctx.shadowBlur=0;
     }
@@ -868,14 +875,18 @@ function renderList(){
   if(filtered.length===0){el.innerHTML='<div class="empty">Ничего не найдено.</div>';updateStats();return;}
 
   el.innerHTML=filtered.map(n=>{
-    const linkedNotes=(n.links||[]).map(lid=>{const ln=notes.find(x=>x.id===lid);return ln?`<span class="el-chip" onclick="scrollToNote('${lid}')" title="${esc(ln.title)}">→ ${esc(ln.title.length>20?ln.title.slice(0,20)+'…':ln.title)}</span>`:'';}).join('');
-    return`<div class="entry" id="entry-${n.id}">
-      <h3>${esc(n.title)}</h3>
+    const clr=noteColor(n.id);
+    const linkedNotes=(n.links||[]).map(lid=>{const ln=notes.find(x=>x.id===lid);return ln?`<span class="el-chip" onclick="scrollToNote('${lid}')" style="border-color:${noteColor(lid)}44;color:${noteColor(lid)}">→ ${esc(ln.title.length>20?ln.title.slice(0,20)+'…':ln.title)}</span>`:'';}).join('');
+    return`<div class="entry" id="entry-${n.id}" style="border-left-color:${clr}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0;box-shadow:0 0 6px ${clr}88"></span>
+        <h3 style="margin:0">${esc(n.title)}</h3>
+      </div>
       <div class="ed">${fmt(n.date)}</div>
       <div class="eb">${esc(n.text).replace(/\n/g,'<br>')}</div>
       ${linkedNotes?`<div class="entry-links">${linkedNotes}</div>`:''}
       <div class="ea">
-        <button class="beb" onclick="editNote('${n.id}')">Редактировать</button>
+        <button class="beb" style="border-color:${clr}55;color:${clr}" onclick="editNote('${n.id}')">Редактировать</button>
         <button class="bdb" onclick="deleteNote('${n.id}')">Удалить</button>
       </div>
     </div>`;
@@ -901,71 +912,79 @@ function updateStats(){
 // ═══════════════════════════════
 // EXPORT .DOC
 // ═══════════════════════════════
-async function exportDocx(){
-  try{
-    const D=window.docx;
-    const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
+function xmlE(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-    const children=[];
+function makeDocXml(notes){
+  function p(content,opts={}){
+    const pPr=opts.center?'<w:pPr><w:jc w:val="center"/>'+(opts.spacing?`<w:spacing w:before="${opts.spacing.before||0}" w:after="${opts.spacing.after||0}"/>`:'')+'</w:pPr>':
+      opts.spacing?`<w:pPr><w:spacing w:before="${opts.spacing.before||0}" w:after="${opts.spacing.after||0}"/></w:pPr>`:'';
+    return`<w:p>${pPr}${content}</w:p>`;
+  }
+  function r(text,opts={}){
+    let rPr='';
+    if(opts.bold)rPr+='<w:b/>';
+    if(opts.italic)rPr+='<w:i/>';
+    if(opts.color)rPr+=`<w:color w:val="${opts.color}"/>`;
+    if(opts.size)rPr+=`<w:sz w:val="${opts.size}"/><w:szCs w:val="${opts.size}"/>`;
+    return`<w:r>${rPr?`<w:rPr>${rPr}</w:rPr>`:''}<w:t xml:space="preserve">${xmlE(text)}</w:t></w:r>`;
+  }
 
-    // Title
-    children.push(new D.Paragraph({
-      children:[new D.TextRun({text:'Мои заметки',bold:true,size:52,color:'C9A84C'})],
-      alignment:D.AlignmentType.CENTER,
-      spacing:{after:200},
-    }));
-    children.push(new D.Paragraph({
-      children:[new D.TextRun({text:`Автор: ${CUR} · ${new Date().toLocaleDateString('ru-RU')}`,size:18,color:'888888'})],
-      alignment:D.AlignmentType.CENTER,
-      spacing:{after:600},
-    }));
+  let body='';
+  // title
+  body+=p(r('Мои заметки',{bold:true,size:52,color:'C9A84C'}),{center:true,spacing:{after:200}});
+  body+=p(r(`Автор: ${CUR} · ${new Date().toLocaleDateString('ru-RU')}`,{size:18,color:'888888',italic:true}),{center:true,spacing:{after:600}});
 
-    notes.forEach(n=>{
-      // note title
-      children.push(new D.Paragraph({
-        children:[new D.TextRun({text:n.title,bold:true,size:30})],
-        spacing:{before:400,after:100},
-        border:{bottom:{color:'C9A84C',size:6,space:4,style:D.BorderStyle.SINGLE}},
-      }));
-      // date
-      children.push(new D.Paragraph({
-        children:[new D.TextRun({text:fmt(n.date),size:18,color:'888888',italics:true})],
-        spacing:{after:160},
-      }));
-      // body lines
-      n.text.split('\n').forEach(line=>{
-        children.push(new D.Paragraph({
-          children:[new D.TextRun({text:line,size:22})],
-          spacing:{after:60},
-        }));
-      });
-      // links
-      const linked=(n.links||[]).map(lid=>notes.find(x=>x.id===lid)?.title).filter(Boolean);
-      if(linked.length){
-        children.push(new D.Paragraph({
-          children:[new D.TextRun({text:'Связано с: '+linked.join(' · '),size:18,color:'C9A84C'})],
-          spacing:{before:80,after:40},
-        }));
-      }
+  notes.forEach(n=>{
+    const clrHex=noteColor(n.id).replace('#','');
+    body+=p(r(n.title,{bold:true,size:30,color:clrHex}),{spacing:{before:400,after:120}});
+    body+=p(r(fmt(n.date),{size:18,color:'888888',italic:true}),{spacing:{after:120}});
+    n.text.split('\n').forEach(line=>{
+      body+=p(r(line||' ',{size:22}),{spacing:{after:60}});
     });
+    const linked=(n.links||[]).map(lid=>notes.find(x=>x.id===lid)?.title).filter(Boolean);
+    if(linked.length)body+=p(r('Связано с: '+linked.join(' · '),{size:18,color:'C9A84C'}),{spacing:{before:80,after:40}});
+  });
 
-    // footer
-    children.push(new D.Paragraph({
-      children:[new D.TextRun({text:'prod by матвей юр',size:16,color:'888888'})],
-      alignment:D.AlignmentType.CENTER,
-      spacing:{before:800},
-    }));
+  body+=p(r('prod by матвей юр',{size:16,color:'888888'}),{center:true,spacing:{before:800}});
+  body+='<w:sectPr/>';
 
-    const doc=new D.Document({sections:[{children}]});
-    const blob=await D.Packer.toBlob(doc);
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>${body}</w:body></w:document>`;
+}
+
+async function exportDocx(){
+  if(typeof JSZip==='undefined'){toast('Загрузка библиотеки...');return;}
+  try{
+    const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const zip=new JSZip();
+
+    zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+    zip.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+    zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"`);
+
+    zip.file('word/document.xml', makeDocXml(notes));
+
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;a.download=`заметки-${CUR}.docx`;a.click();
     URL.revokeObjectURL(url);
-    toast('Файл скачан');
+    toast('Файл скачан ✓');
   }catch(e){
     console.error(e);
-    toast('Ошибка генерации файла');
+    toast('Ошибка: '+e.message);
   }
 }
 
