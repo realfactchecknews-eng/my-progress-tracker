@@ -80,6 +80,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);line-he
 #gm-close{padding:8px 20px;background:transparent;border:1px solid #222;color:var(--mu);font-family:inherit;font-size:.7rem;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:8px;}
 #gm-close:hover{border-color:#444;color:var(--tx);}
 
+/* leaderboard */
+#lb-wrap{margin-top:20px;border-top:1px solid #1e1e1e;padding-top:16px;text-align:left;}
+#lb-wrap h4{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--g);margin-bottom:10px;text-align:center;}
+.lb-row{display:grid;grid-template-columns:20px 1fr 52px 52px;gap:8px;align-items:center;padding:7px 10px;margin-bottom:3px;background:#0d0d0d;border:1px solid #181818;font-size:.75rem;}
+.lb-row.lb-head{background:transparent;border-color:transparent;color:var(--mu);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;padding-bottom:2px;}
+.lb-row.top1{border-color:rgba(201,168,76,.35);background:rgba(201,168,76,.06);}
+.lb-rank{color:var(--mu);font-size:.7rem;}
+.lb-nick{color:var(--tx);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-crown{font-size:.9rem;}
+.lb-num{text-align:center;color:var(--mu);}
+.lb-wins{text-align:center;color:var(--g);font-weight:600;}
+.lb-empty{text-align:center;color:var(--mu);font-size:.72rem;padding:14px 0;}
+
 /* ── WIN SCREEN ── */
 #win{position:fixed;inset:0;z-index:1100;background:#000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
 #win.on{display:flex;}
@@ -288,6 +301,10 @@ footer span{color:var(--g);opacity:.45;}
     <button id="gm-spin" onclick="spinGame()">Крутить!</button>
     <div id="gm-result"></div>
     <button id="gm-close" onclick="closeGame()">Закрыть</button>
+    <div id="lb-wrap">
+      <h4>🏆 Зал победителей</h4>
+      <div id="lb-list"></div>
+    </div>
   </div>
 </div>
 
@@ -984,12 +1001,53 @@ function drawGameWheel(angle){
   gmAngle=angle;
 }
 
+// ── LEADERBOARD ──
+function lbKey(){return 'mj-leaders';}
+function getLeaders(){return JSON.parse(localStorage.getItem(lbKey())||'[]');}
+function saveLeaders(l){localStorage.setItem(lbKey(),JSON.stringify(l));}
+
+function lbAddAttempt(){
+  const l=getLeaders();
+  let e=l.find(x=>x.user===CUR);
+  if(!e){e={user:CUR,nick:CUR,tg:'',attempts:0,wins:0};l.push(e);}
+  e.attempts++;
+  saveLeaders(l);
+}
+
+function lbAddWin(tg){
+  const l=getLeaders();
+  let e=l.find(x=>x.user===CUR);
+  if(!e){e={user:CUR,nick:CUR,tg:'',attempts:1,wins:0};l.push(e);}
+  e.wins++;
+  if(tg) e.nick=tg;
+  saveLeaders(l);
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  const l=getLeaders().sort((a,b)=>b.wins-a.wins||a.attempts-b.attempts);
+  const el=document.getElementById('lb-list');
+  if(!l.length){el.innerHTML='<div class="lb-empty">Пока нет победителей. Будь первым!</div>';return;}
+  const rows=l.map((e,i)=>`
+    <div class="lb-row ${i===0&&e.wins>0?'top1':''}">
+      <span class="lb-rank">${i+1}</span>
+      <span class="lb-nick">${e.wins>0?'👑 ':''}${esc(e.nick||e.user)}</span>
+      <span class="lb-num" title="Попыток">${e.attempts} 🎰</span>
+      <span class="lb-wins" title="Побед">${e.wins} ✓</span>
+    </div>`).join('');
+  el.innerHTML=`
+    <div class="lb-row lb-head">
+      <span></span><span>Игрок</span><span style="text-align:center">Попыток</span><span style="text-align:center">Побед</span>
+    </div>${rows}`;
+}
+
 function openGame(){
   document.getElementById('gm').classList.add('on');
   document.getElementById('gm-result').textContent='';
   document.getElementById('gm-spin').disabled=false;
   document.getElementById('gm-num').value='';
   drawGameWheel(0);
+  renderLeaderboard();
 }
 function closeGame(){document.getElementById('gm').classList.remove('on');}
 
@@ -998,6 +1056,7 @@ function spinGame(){
   const pick=parseInt(raw);
   if(isNaN(pick)||pick<0||pick>36){toast('Введи число от 0 до 36');return;}
 
+  lbAddAttempt();
   document.getElementById('gm-spin').disabled=true;
   document.getElementById('gm-result').textContent='';
 
@@ -1054,6 +1113,7 @@ function claimPrize(){
   const handle=document.getElementById('win-tg').value.trim();
   if(!handle){toast('Введи свой Telegram');return;}
   const h=handle.startsWith('@')?handle:'@'+handle;
+  lbAddWin(h);
   const msg=encodeURIComponent(`🎰 Победитель рулетки!\nМой Telegram: ${h}\nХочу мишку за 15 звёзд 🧸`);
   window.open(`https://t.me/Matveyika?text=${msg}`,'_blank');
 }
