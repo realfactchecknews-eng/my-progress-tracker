@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Мои заметки</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 <style>
 :root{--g:#C9A84C;--gl:#E2C47A;--gd:rgba(201,168,76,.12);--gb:rgba(201,168,76,.26);--bg:#070707;--s1:#0e0e0e;--s2:#161616;--tx:#F0EDE8;--mu:#505050;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -390,7 +391,7 @@ footer span{color:var(--g);opacity:.45;}
   <!-- LIST -->
   <div class="lh">
     <span class="ll">Заметки</span>
-    <button id="expbtn" onclick="exportDoc()">Экспорт .doc ↓</button>
+    <button id="expbtn" onclick="exportDocx()">Экспорт .docx ↓</button>
   </div>
   <div class="day-row"><div class="dtabs" id="dtabs"></div></div>
   <div id="list"></div>
@@ -531,11 +532,8 @@ function getNotes(){
   const d=localStorage.getItem(key());
   if(d)return JSON.parse(d);
   const s=[
-    {id:'s1',date:'2026-06-15',title:'Telegram-бот с ИИ',text:'Python + aiogram. API: Groq, OpenRouter, Together, HuggingFace, Cerebras. Задеплоил на bothost.ru.',links:['s2','s3']},
-    {id:'s2',date:'2026-06-15',title:'Стиль под Мелстроя',text:'Системный промпт, few-shot примеры. Слова: беды, друн, баба, нормалды, масса.',links:['s1']},
-    {id:'s3',date:'2026-06-15',title:'Сайт с планом обучения',text:'HTML-сайт с 2-недельным планом по AI-ботам и ссылками.',links:['s1']},
-    {id:'s4',date:'2026-06-14',title:'Идея: бот-переводчик',text:'Голосовой переводчик в реальном времени через Telegram.',links:['s1','s5']},
-    {id:'s5',date:'2026-06-14',title:'Основы asyncio',text:'Event loop, корутины, await/async, gather. Теперь понимаю aiogram под капотом.',links:['s1']},
+    {id:'s1',date:'2026-06-15',title:'67',text:'67',links:[]},
+    {id:'s2',date:'2026-06-15',title:'Сытый голодного не поймёт',text:'Сытый голодного не поймёт.',links:['s1']},
   ];
   localStorage.setItem(key(),JSON.stringify(s));
   return s;
@@ -886,43 +884,72 @@ function updateStats(){
 // ═══════════════════════════════
 // EXPORT .DOC
 // ═══════════════════════════════
-function exportDoc(){
-  const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
-  let html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset="UTF-8"><title>Мои заметки — ${CUR}</title>
-<style>
-body{font-family:Calibri,Arial;font-size:12pt;color:#222;margin:40px;}
-h1{font-size:22pt;color:#8B6914;letter-spacing:2pt;text-align:center;margin-bottom:4pt;}
-.sub{text-align:center;color:#888;font-size:10pt;margin-bottom:30pt;}
-.note{margin-bottom:20pt;padding:12pt;border-left:3pt solid #C9A84C;page-break-inside:avoid;}
-h2{font-size:14pt;color:#222;margin-bottom:4pt;}
-.date{color:#888;font-size:9pt;margin-bottom:8pt;}
-p{font-size:11pt;color:#555;line-height:1.6;}
-.links{font-size:9pt;color:#8B6914;margin-top:6pt;}
-hr{border:none;border-top:1px solid #eee;margin:20pt 0;}
-.footer{text-align:center;color:#ccc;font-size:8pt;margin-top:40pt;letter-spacing:2pt;}
-</style></head><body>
-<h1>Мои заметки</h1>
-<div class="sub">Автор: ${CUR} · Экспорт: ${new Date().toLocaleDateString('ru-RU')}</div>`;
+async function exportDocx(){
+  try{
+    const D=window.docx;
+    const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  notes.forEach(n=>{
-    const linkedTitles=(n.links||[]).map(lid=>{const ln=notes.find(x=>x.id===lid);return ln?ln.title:'';}).filter(Boolean);
-    html+=`<div class="note">
-<h2>${n.title}</h2>
-<div class="date">${fmt(n.date)}</div>
-<p>${n.text.replace(/\n/g,'<br>')}</p>
-${linkedTitles.length?`<div class="links">Связано с: ${linkedTitles.join(' · ')}</div>`:''}
-</div>`;
-  });
+    const children=[];
 
-  html+=`<div class="footer">prod by <a href="https://t.me/Matveyika" style="color:#C9A84C;text-decoration:none;">матвей юр</a></div></body></html>`;
+    // Title
+    children.push(new D.Paragraph({
+      children:[new D.TextRun({text:'Мои заметки',bold:true,size:52,color:'C9A84C'})],
+      alignment:D.AlignmentType.CENTER,
+      spacing:{after:200},
+    }));
+    children.push(new D.Paragraph({
+      children:[new D.TextRun({text:`Автор: ${CUR} · ${new Date().toLocaleDateString('ru-RU')}`,size:18,color:'888888'})],
+      alignment:D.AlignmentType.CENTER,
+      spacing:{after:600},
+    }));
 
-  const blob=new Blob(['﻿'+html],{type:'application/msword;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=`заметки-${CUR}.doc`;a.click();
-  URL.revokeObjectURL(url);
-  toast('Файл скачан');
+    notes.forEach(n=>{
+      // note title
+      children.push(new D.Paragraph({
+        children:[new D.TextRun({text:n.title,bold:true,size:30})],
+        spacing:{before:400,after:100},
+        border:{bottom:{color:'C9A84C',size:6,space:4,style:D.BorderStyle.SINGLE}},
+      }));
+      // date
+      children.push(new D.Paragraph({
+        children:[new D.TextRun({text:fmt(n.date),size:18,color:'888888',italics:true})],
+        spacing:{after:160},
+      }));
+      // body lines
+      n.text.split('\n').forEach(line=>{
+        children.push(new D.Paragraph({
+          children:[new D.TextRun({text:line,size:22})],
+          spacing:{after:60},
+        }));
+      });
+      // links
+      const linked=(n.links||[]).map(lid=>notes.find(x=>x.id===lid)?.title).filter(Boolean);
+      if(linked.length){
+        children.push(new D.Paragraph({
+          children:[new D.TextRun({text:'Связано с: '+linked.join(' · '),size:18,color:'C9A84C'})],
+          spacing:{before:80,after:40},
+        }));
+      }
+    });
+
+    // footer
+    children.push(new D.Paragraph({
+      children:[new D.TextRun({text:'prod by матвей юр',size:16,color:'888888'})],
+      alignment:D.AlignmentType.CENTER,
+      spacing:{before:800},
+    }));
+
+    const doc=new D.Document({sections:[{children}]});
+    const blob=await D.Packer.toBlob(doc);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`заметки-${CUR}.docx`;a.click();
+    URL.revokeObjectURL(url);
+    toast('Файл скачан');
+  }catch(e){
+    console.error(e);
+    toast('Ошибка генерации файла');
+  }
 }
 
 // ═══════════════════════════════
