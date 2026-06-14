@@ -936,19 +936,19 @@ function exportPDF(){
 <title>Заметки — ${CUR}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Georgia',serif;background:#fff;color:#1a1a1a;padding:48px 60px;}
-  @media print{body{padding:20px 32px;}}
-  .header{text-align:center;border-bottom:2px solid #C9A84C;padding-bottom:24px;margin-bottom:40px;}
+  body{font-family:'Georgia',serif;background:#080808;color:#F0EDE8;padding:48px 60px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  @media print{body{padding:20px 32px;background:#080808!important;}}
+  .header{text-align:center;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:24px;margin-bottom:40px;}
   .header h1{font-size:2rem;font-weight:400;letter-spacing:.15em;color:#C9A84C;margin-bottom:6px;}
-  .header .meta{font-size:.8rem;color:#888;letter-spacing:.05em;}
-  .note{display:flex;gap:0;margin-bottom:32px;page-break-inside:avoid;border:1px solid #eee;border-radius:2px;overflow:hidden;}
+  .header .meta{font-size:.8rem;color:#555;letter-spacing:.05em;}
+  .note{display:flex;gap:0;margin-bottom:24px;page-break-inside:avoid;border:1px solid #1a1a1a;background:#0f0f0f;overflow:hidden;}
   .note-bar{width:4px;flex-shrink:0;}
   .note-body{padding:18px 22px;flex:1;}
   h2{font-size:1.1rem;font-weight:600;margin-bottom:4px;}
-  .note-date{font-size:.75rem;color:#999;margin-bottom:10px;font-style:italic;}
-  p{font-size:.92rem;line-height:1.75;color:#333;}
+  .note-date{font-size:.75rem;color:#555;margin-bottom:10px;font-style:italic;}
+  p{font-size:.92rem;line-height:1.75;color:#999;}
   .note-links{margin-top:10px;font-size:.78rem;color:#C9A84C;font-style:italic;}
-  .footer{text-align:center;margin-top:56px;padding-top:20px;border-top:1px solid #eee;font-size:.72rem;color:#bbb;letter-spacing:.2em;}
+  .footer{text-align:center;margin-top:56px;padding-top:20px;border-top:1px solid #1a1a1a;font-size:.72rem;color:#333;letter-spacing:.2em;}
   .footer a{color:#C9A84C;text-decoration:none;}
 </style>
 </head><body>
