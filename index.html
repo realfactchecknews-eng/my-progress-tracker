@@ -276,7 +276,9 @@ footer span{color:var(--g);opacity:.45;}
 <!-- ══ GAME MODAL ══ -->
 <div id="gm" onclick="if(event.target===this)closeGame()">
   <div class="gm-box">
-    <h3>Угадай число — выиграй 67</h3>
+    <h3>Угадай число — выиграй приз</h3>
+    <div style="font-size:3rem;margin-bottom:4px;">🧸</div>
+    <div style="font-size:.72rem;color:var(--g);letter-spacing:.06em;margin-bottom:16px;">Приз победителю — мишка в Telegram за 15 ⭐</div>
     <canvas id="gm-canvas" width="240" height="240"></canvas>
     <div class="gm-pick">
       <p>Твоё число (0–36)</p>
@@ -309,6 +311,12 @@ footer span{color:var(--g);opacity:.45;}
       <line x1="22" y1="104" x2="10" y2="100" stroke="#C9A84C" stroke-width="3" stroke-linecap="round"/>
       <line x1="58" y1="100" x2="70" y2="104" stroke="#C9A84C" stroke-width="3" stroke-linecap="round"/>
     </svg>
+  </div>
+  <div id="win-claim" style="text-align:center;margin-top:12px;width:min(340px,88vw);">
+    <p style="font-size:.72rem;color:var(--mu);letter-spacing:.06em;margin-bottom:10px;">Введи свой Telegram — пришлю мишку 🧸</p>
+    <input type="text" id="win-tg" placeholder="@username" style="width:100%;padding:10px 13px;background:#111;border:1px solid var(--gb);color:var(--tx);font-family:inherit;font-size:.9rem;outline:none;text-align:center;margin-bottom:8px;">
+    <button onclick="claimPrize()" style="width:100%;padding:11px;background:var(--g);color:#000;border:none;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;margin-bottom:12px;">Получить приз</button>
+    <p style="font-size:.65rem;color:var(--mu);">или напиши напрямую: <a href="https://t.me/Matveyika" target="_blank" style="color:var(--g);text-decoration:none;">@Matveyika</a></p>
   </div>
   <button id="win-close" onclick="closeWin()">Закрыть</button>
 </div>
@@ -388,7 +396,7 @@ footer span{color:var(--g);opacity:.45;}
   <div id="list"></div>
 
 </div><!-- /wrap -->
-<footer>prod by <span>матвей юр</span></footer>
+<footer>prod by <a href="https://t.me/Matveyika" target="_blank" style="color:var(--g);opacity:.45;text-decoration:none;letter-spacing:.28em;">матвей юр</a></footer>
 </div><!-- /app -->
 
 <div id="toast"></div>
@@ -432,8 +440,8 @@ footer span{color:var(--g);opacity:.45;}
   }
 
   const finalA=-Math.PI/2-seg/2;
-  const total=finalA+11*2*Math.PI;
-  const dur=7500;let t0=null;
+  const total=finalA+8*2*Math.PI;
+  const dur=5000;let t0=null;
   function ease(x){return 1-Math.pow(1-x,4.5);}
   function frame(ts){
     if(!t0)t0=ts;
@@ -907,7 +915,7 @@ ${linkedTitles.length?`<div class="links">Связано с: ${linkedTitles.join
 </div>`;
   });
 
-  html+=`<div class="footer">prod by матвей юр</div></body></html>`;
+  html+=`<div class="footer">prod by <a href="https://t.me/Matveyika" style="color:#C9A84C;text-decoration:none;">матвей юр</a></div></body></html>`;
 
   const blob=new Blob(['﻿'+html],{type:'application/msword;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -1013,6 +1021,14 @@ function showWin(){
   const style=document.createElement('style');
   style.textContent='@keyframes wdab{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-12px) rotate(5deg)}}';
   document.head.appendChild(style);
+}
+
+function claimPrize(){
+  const handle=document.getElementById('win-tg').value.trim();
+  if(!handle){toast('Введи свой Telegram');return;}
+  const h=handle.startsWith('@')?handle:'@'+handle;
+  const msg=encodeURIComponent(`🎰 Победитель рулетки!\nМой Telegram: ${h}\nХочу мишку за 15 звёзд 🧸`);
+  window.open(`https://t.me/Matveyika?text=${msg}`,'_blank');
 }
 
 function closeWin(){
