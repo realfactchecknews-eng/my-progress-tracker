@@ -408,7 +408,7 @@ footer span{color:var(--g);opacity:.45;}
   <!-- LIST -->
   <div class="lh">
     <span class="ll">Заметки</span>
-    <button id="expbtn" onclick="exportDocx()">Экспорт .docx ↓</button>
+    <button id="expbtn" onclick="exportPDF()">Экспорт PDF ↓</button>
   </div>
   <div class="day-row"><div class="dtabs" id="dtabs"></div></div>
   <div id="list"></div>
@@ -912,80 +912,55 @@ function updateStats(){
 // ═══════════════════════════════
 // EXPORT .DOC
 // ═══════════════════════════════
-function xmlE(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function exportPDF(){
+  const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const date=new Date().toLocaleDateString('ru-RU');
 
-function makeDocXml(notes){
-  function p(content,opts={}){
-    const pPr=opts.center?'<w:pPr><w:jc w:val="center"/>'+(opts.spacing?`<w:spacing w:before="${opts.spacing.before||0}" w:after="${opts.spacing.after||0}"/>`:'')+'</w:pPr>':
-      opts.spacing?`<w:pPr><w:spacing w:before="${opts.spacing.before||0}" w:after="${opts.spacing.after||0}"/></w:pPr>`:'';
-    return`<w:p>${pPr}${content}</w:p>`;
-  }
-  function r(text,opts={}){
-    let rPr='';
-    if(opts.bold)rPr+='<w:b/>';
-    if(opts.italic)rPr+='<w:i/>';
-    if(opts.color)rPr+=`<w:color w:val="${opts.color}"/>`;
-    if(opts.size)rPr+=`<w:sz w:val="${opts.size}"/><w:szCs w:val="${opts.size}"/>`;
-    return`<w:r>${rPr?`<w:rPr>${rPr}</w:rPr>`:''}<w:t xml:space="preserve">${xmlE(text)}</w:t></w:r>`;
-  }
-
-  let body='';
-  // title
-  body+=p(r('Мои заметки',{bold:true,size:52,color:'C9A84C'}),{center:true,spacing:{after:200}});
-  body+=p(r(`Автор: ${CUR} · ${new Date().toLocaleDateString('ru-RU')}`,{size:18,color:'888888',italic:true}),{center:true,spacing:{after:600}});
-
-  notes.forEach(n=>{
-    const clrHex=noteColor(n.id).replace('#','');
-    body+=p(r(n.title,{bold:true,size:30,color:clrHex}),{spacing:{before:400,after:120}});
-    body+=p(r(fmt(n.date),{size:18,color:'888888',italic:true}),{spacing:{after:120}});
-    n.text.split('\n').forEach(line=>{
-      body+=p(r(line||' ',{size:22}),{spacing:{after:60}});
-    });
+  const notesHtml=notes.map(n=>{
+    const clr=noteColor(n.id);
     const linked=(n.links||[]).map(lid=>notes.find(x=>x.id===lid)?.title).filter(Boolean);
-    if(linked.length)body+=p(r('Связано с: '+linked.join(' · '),{size:18,color:'C9A84C'}),{spacing:{before:80,after:40}});
-  });
+    return`<div class="note">
+      <div class="note-bar" style="background:${clr}"></div>
+      <div class="note-body">
+        <h2 style="color:${clr}">${n.title}</h2>
+        <div class="note-date">${fmt(n.date)}</div>
+        <p>${n.text.replace(/\n/g,'<br>')}</p>
+        ${linked.length?`<div class="note-links">→ ${linked.join(' · ')}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 
-  body+=p(r('prod by матвей юр',{size:16,color:'888888'}),{center:true,spacing:{before:800}});
-  body+='<w:sectPr/>';
-
-  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>${body}</w:body></w:document>`;
-}
-
-async function exportDocx(){
-  if(typeof JSZip==='undefined'){toast('Загрузка библиотеки...');return;}
-  try{
-    const notes=getNotes().sort((a,b)=>new Date(b.date)-new Date(a.date));
-    const zip=new JSZip();
-
-    zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
-
-    zip.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
-
-    zip.file('word/_rels/document.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"`);
-
-    zip.file('word/document.xml', makeDocXml(notes));
-
-    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download=`заметки-${CUR}.docx`;a.click();
-    URL.revokeObjectURL(url);
-    toast('Файл скачан ✓');
-  }catch(e){
-    console.error(e);
-    toast('Ошибка: '+e.message);
-  }
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>Заметки — ${CUR}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Georgia',serif;background:#fff;color:#1a1a1a;padding:48px 60px;}
+  @media print{body{padding:20px 32px;}}
+  .header{text-align:center;border-bottom:2px solid #C9A84C;padding-bottom:24px;margin-bottom:40px;}
+  .header h1{font-size:2rem;font-weight:400;letter-spacing:.15em;color:#C9A84C;margin-bottom:6px;}
+  .header .meta{font-size:.8rem;color:#888;letter-spacing:.05em;}
+  .note{display:flex;gap:0;margin-bottom:32px;page-break-inside:avoid;border:1px solid #eee;border-radius:2px;overflow:hidden;}
+  .note-bar{width:4px;flex-shrink:0;}
+  .note-body{padding:18px 22px;flex:1;}
+  h2{font-size:1.1rem;font-weight:600;margin-bottom:4px;}
+  .note-date{font-size:.75rem;color:#999;margin-bottom:10px;font-style:italic;}
+  p{font-size:.92rem;line-height:1.75;color:#333;}
+  .note-links{margin-top:10px;font-size:.78rem;color:#C9A84C;font-style:italic;}
+  .footer{text-align:center;margin-top:56px;padding-top:20px;border-top:1px solid #eee;font-size:.72rem;color:#bbb;letter-spacing:.2em;}
+  .footer a{color:#C9A84C;text-decoration:none;}
+</style>
+</head><body>
+<div class="header">
+  <h1>Мои заметки</h1>
+  <div class="meta">${CUR} · ${date}</div>
+</div>
+${notesHtml}
+<div class="footer">prod by <a href="https://t.me/Matveyika">матвей юр</a></div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`);
+  win.document.close();
 }
 
 // ═══════════════════════════════
